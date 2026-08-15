@@ -12,10 +12,21 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/node": "^11.1.2",
+    "@auth/core": "^0.41.3",
+    "@better-auth/drizzle-adapter": "^1.6.29",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.2.2",
+    "better-auth": "^1.6.29",
     "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.23.0",
+    "postgres": "^3.4.9",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.21.0",
+    "drizzle-kit": "^0.31.10"
   }
 }

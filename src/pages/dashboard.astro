@@ -1,0 +1,47 @@
+---
+import { auth } from '../lib/auth';
+
+const session = await auth.api.getSession({
+  headers: Astro.request.headers,
+});
+
+if (!session) {
+  return Astro.redirect('/login');
+}
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Dashboard</title>
+  </head>
+
+  <body>
+    <main>
+      <h1>Dashboard</h1>
+
+      <p>
+        Bienvenido, {session.user.name}
+      </p>
+
+      {session.user.image && (
+        <img
+          src={session.user.image}
+          alt={session.user.name}
+          width="80"
+          height="80"
+        />
+      )}
+
+      <p>{session.user.email}</p>
+
+      <form action="/api/logout" method="post">
+        <button type="submit">
+          Cerrar sesión
+        </button>
+      </form>
+    </main>
+  </body>
+</html>

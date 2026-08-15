@@ -1,0 +1,35 @@
+---
+const title = 'Iniciar sesión';
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+  </head>
+
+  <body>
+    <main>
+      <h1>Iniciar sesión</h1>
+
+      <button id="github-login">
+        Continuar con GitHub
+      </button>
+    </main>
+
+    <script>
+      import { authClient } from '../lib/auth-client';
+
+      const button = document.querySelector('#github-login');
+
+      button?.addEventListener('click', async () => {
+        await authClient.signIn.social({
+          provider: 'github',
+          callbackURL: '/dashboard',
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,84 @@
+---
+title: "Filtrar con WHERE"
+slug: "where"
+order: 2
+description: "Selecciona solo las filas que cumplen una condición usando la cláusula WHERE."
+difficulty: "basico"
+minutes: 12
+---
+
+`SELECT` devuelve todas las filas de una tabla... casi siempre querrás menos que eso. La cláusula `WHERE` filtra las filas **antes** de devolver el resultado.
+
+## Sintaxis
+
+```sql
+SELECT columna
+FROM tabla
+WHERE condición;
+```
+
+## Comparaciones
+
+Los operadores de comparación más comunes:
+
+| Operador | Significado |
+| -------- | ----------- |
+| `=` | Igual a |
+| `<>` o `!=` | Diferente de |
+| `>` | Mayor que |
+| `<` | Menor que |
+| `>=` | Mayor o igual que |
+| `<=` | Menor o igual que |
+
+Ejemplo: los usuarios mayores de 25 años.
+
+```sql
+SELECT name, age
+FROM users
+WHERE age > 25;
+```
+
+## Combinar condiciones: AND y OR
+
+`AND` exige que **todas** las condiciones se cumplan; `OR` basta con que se cumpla **una**:
+
+```sql
+SELECT name, country
+FROM users
+WHERE country = 'MX' AND age >= 30;
+```
+
+```sql
+SELECT name, country
+FROM users
+WHERE country = 'CO' OR country = 'PE';
+```
+
+## IN: varios valores
+
+Cuando comparas contra una lista de valores, `IN` es más limpio que encadenar `OR`:
+
+```sql
+SELECT name, country
+FROM users
+WHERE country IN ('CO', 'PE', 'CL');
+```
+
+## Texto exacto y comillas
+
+Los textos en SQL van entre comillas simples:
+
+```sql
+SELECT name
+FROM users
+WHERE name = 'Ana Ruiz';
+```
+
+## Puntos clave
+
+- `WHERE` filtra filas; se escribe **después** de `FROM`.
+- `AND` y `OR` combinan condiciones; usa paréntesis para agrupar cuando haya varias.
+- Los textos se comparan con comillas simples: `'MX'`.
+- Los números se escriben sin comillas.
+
+Ahora que sabes filtrar, pasa a la siguiente lección para **ordenar y limitar** los resultados.

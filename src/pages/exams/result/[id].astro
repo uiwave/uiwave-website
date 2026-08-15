@@ -1,0 +1,157 @@
+---
+import { asc, eq } from 'drizzle-orm';
+import Layout from '@/layouts/Layout.astro';
+import Card from '@/components/ui/Card.astro';
+import Button from '@/components/ui/Button.astro';
+import Badge from '@/components/ui/Badge.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import { db } from '@/lib/db';
+import { exam as examTable, examAttempt, examQuestion } from '@/lib/schema';
+import { escapeHtml } from '@/lib/sql/render';
+
+const { id } = Astro.params;
+
+const { user } = Astro.locals;
+
+const [attempt] = await db
+  .select()
+  .from(examAttempt)
+  .where(eq(examAttempt.id, id ?? ''));
+
+const notFound = !attempt || !user || attempt.userId !== user.id;
+
+interface QuestionResult {
+  questionId: string;
+  correct: boolean;
+  expectedAnswer?: unknown;
+  submittedAnswer?: unknown;
+}
+
+let item: (typeof examTable.$inferSelect) | null = null;
+let questions: Array<typeof examQuestion.$inferSelect> = [];
+let resultsByQuestion: Record<string, QuestionResult> = {};
+let correctCount = 0;
+
+if (!notFound && attempt) {
+  const [examRow] = await db.select().from(examTable).where(eq(examTable.id, attempt.examId));
+  item = examRow;
+
+  questions = await db
+    .select()
+    .from(examQuestion)
+    .where(eq(examQuestion.examId, attempt.examId))
+    .orderBy(asc(examQuestion.order));
+
+  const results = attempt.results as QuestionResult[];
+  resultsByQuestion = results.reduce<Record<string, QuestionResult>>((acc, row) => {
+    acc[row.questionId] = row;
+    return acc;
+  }, {});
+
+  correctCount = questions.filter((q) => resultsByQuestion[q.id]?.correct).length;
+}
+
+const formatAnswer = (value: unknown): string => {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'object' && value !== null && 'sql' in value) {
+    return (value as { sql: string }).sql;
+  }
+  if (typeof value === 'object' && value !== null && 'error' in value) {
+    return `Error: ${(value as { error: string }).error}`;
+  }
+  return String(value);
+};
+---
+
+{
+  notFound ? (
+    <Layout title="Intento no encontrado" noindex>
+      <div class="mx-auto max-w-3xl px-4 py-20">
+        <EmptyState title="Resultado no encontrado" description="Este intento no existe o no tienes permiso para verlo.">
+          <Button href="/exams">Ver exámenes</Button>
+        </EmptyState>
+      </div>
+    </Layout>
+  ) : (
+    <Layout title={`Resultado · ${item?.title ?? 'Examen'}`} noindex>
+      <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+        <div class="mb-8 text-center">
+          <div
+            class:list={[
+              'mx-auto flex h-32 w-32 flex-col items-center justify-center rounded-full border-8',
+              attempt!.passed
+                ? 'border-success/30 bg-success/10 text-success'
+                : 'border-destructive/30 bg-destructive/10 text-destructive',
+            ]}
+          >
+            <span class="text-3xl font-bold tabular-nums">{attempt!.score}%</span>
+            <span class="text-xs font-medium uppercase tracking-wide">{attempt!.passed ? 'Aprobado' : 'No aprobado'}</span>
+          </div>
+
+          <h1 class="mt-6 text-2xl font-bold tracking-tight">{item?.title}</h1>
+          <p class="mt-2 text-sm text-muted-foreground">
+            {correctCount} de {questions.length} respuestas correctas ·{' '}
+            {new Date(attempt!.createdAt).toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' })} ·{' '}
+            {new Date(attempt!.createdAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
+          </p>
+
+          <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+            {attempt!.passed ? (
+              <Badge variant="success">¡Aprobado! El requisito de {item?.passScore}% está cumplido.</Badge>
+            ) : (
+              <Badge variant="destructive">Necesitabas {item?.passScore}% para aprobar</Badge>
+            )}
+            <Button href={`/exams/${item?.slug}`} variant="outline" size="sm">
+              {attempt!.passed ? 'Reintentar para mejorar' : 'Intentar de nuevo'}
+            </Button>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          {questions.map((question, index) => {
+            const result = resultsByQuestion[question.id];
+            const correct = result?.correct ?? false;
+            return (
+              <Card class:list={['border-l-4', correct ? 'border-l-success' : 'border-l-destructive']}>
+                <div class="flex items-start justify-between gap-4">
+                  <p class="font-medium">
+                    <span class="mr-2 text-sm font-bold text-muted-foreground">{index + 1}.</span>
+                    {question.prompt}
+                  </p>
+                  <Badge variant={correct ? 'success' : 'destructive'}>
+                    {correct ? 'Correcta' : 'Incorrecta'}
+                  </Badge>
+                </div>
+
+                {question.type === 'multiple_choice' ? (
+                  <div class="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+                    <div class="rounded-lg border border-border bg-muted/30 p-3">
+                      <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tu respuesta</p>
+                      <p class="mt-1">{formatAnswer(result?.submittedAnswer)}</p>
+                    </div>
+                    <div class="rounded-lg border border-border bg-muted/30 p-3">
+                      <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Respuesta correcta</p>
+                      <p class="mt-1">{formatAnswer(result?.expectedAnswer)}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div class="mt-4 overflow-x-auto rounded-lg border border-border bg-muted/30 p-3">
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tu consulta</p>
+                    <pre class="whitespace-pre-wrap text-sm"><code>{escapeHtml(formatAnswer(result?.submittedAnswer))}</code></pre>
+                  </div>
+                )}
+
+                {question.explanation && (
+                  <p class="mt-4 rounded-lg bg-accent/40 p-3 text-sm text-muted-foreground">
+                    <span class="font-semibold text-foreground">Explicación: </span>
+                    {question.explanation}
+                  </p>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    </Layout>
+  )
+}

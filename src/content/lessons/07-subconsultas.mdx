@@ -1,0 +1,87 @@
+---
+title: "Subconsultas"
+slug: "subconsultas"
+order: 7
+description: "Usa el resultado de una consulta dentro de otra consulta."
+difficulty: "intermedio"
+minutes: 15
+---
+
+Una subconsulta es un `SELECT` anidado dentro de otro `SELECT`. Se usa cuando una pregunta necesita un valor que solo se obtiene consultando la base.
+
+## Subconsulta escalar
+
+Devuelve un solo valor. Se usa con operadores de comparación:
+
+```sql
+SELECT name
+FROM products
+WHERE price > (SELECT AVG(price) FROM products);
+```
+
+La subconsulta calcula el promedio y la consulta externa filtra los productos por encima de él.
+
+## Subconsulta con IN
+
+Devuelve una lista de valores:
+
+```sql
+SELECT name
+FROM users
+WHERE id IN (
+  SELECT DISTINCT user_id
+  FROM orders
+);
+```
+
+Aquí: los usuarios que han realizado al menos un pedido.
+
+## Subconsulta correlacionada
+
+Depende de la fila actual de la consulta externa. Se evalúa una vez por fila:
+
+```sql
+SELECT p.name, p.price,
+       (SELECT AVG(price)
+        FROM products p2
+        WHERE p2.category_id = p.category_id) AS promedio_categoria
+FROM products p;
+```
+
+## Subconsultas con EXISTS
+
+`EXISTS` devuelve verdadero si la subconsulta devuelve al menos una fila:
+
+```sql
+SELECT u.name
+FROM users u
+WHERE EXISTS (
+  SELECT 1
+  FROM orders o
+  WHERE o.user_id = u.id AND o.total > 100
+);
+```
+
+## Subconsultas en FROM
+
+Una subconsulta puede actuar como una tabla derivada:
+
+```sql
+SELECT categoria, COUNT(*) AS productos_caros
+FROM (
+  SELECT c.name AS categoria, p.price
+  FROM products p
+  JOIN categories c ON p.category_id = c.id
+  WHERE p.price > 25
+)
+GROUP BY categoria;
+```
+
+## Puntos clave
+
+- Las subconsultas en `WHERE` deben devolver un valor compatible con el operador usado (`=`, `IN`, `EXISTS`...).
+- `EXISTS` es más eficiente que `IN` cuando la lista esperada es grande.
+- Una subconsulta en `FROM` siempre necesita un alias.
+- En la mayoría de los casos lo mismo se puede resolver con `JOIN`; elige la opción más legible.
+
+La siguiente lección explica un valor que aparece en cuanto unes tablas: **NULL**.

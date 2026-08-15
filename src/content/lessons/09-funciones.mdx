@@ -1,0 +1,86 @@
+---
+title: "Funciones de texto y fecha"
+slug: "funciones"
+order: 9
+description: "Manipula cadenas y fechas con las funciones incorporadas de SQL."
+difficulty: "intermedio"
+minutes: 12
+---
+
+SQL incluye funciones para transformar texto y fechas directamente en la consulta.
+
+## Funciones de texto
+
+```sql
+SELECT UPPER(name) AS mayusculas,
+       LOWER(country) AS minusculas,
+       LENGTH(name) AS longitud
+FROM users;
+```
+
+| Función | Qué hace |
+| ------- | -------- |
+| `UPPER(texto)` | Convierte a mayúsculas |
+| `LOWER(texto)` | Convierte a minúsculas |
+| `LENGTH(texto)` | Longitud del texto |
+| `TRIM(texto)` | Quita espacios de los extremos |
+| `SUBSTR(texto, inicio, largo)` | Extrae una parte |
+| `REPLACE(texto, a, b)` | Reemplaza `a` por `b` |
+
+Ejemplo: quedarse con la inicial del nombre y el dominio del correo.
+
+```sql
+SELECT SUBSTR(name, 1, 1) AS inicial,
+       SUBSTR(email, INSTR(email, '@') + 1) AS dominio
+FROM users;
+```
+
+## LIKE: búsquedas con patrones
+
+`LIKE` compara texto con patrones usando comodines: `%` (cualquier cantidad de caracteres) y `_` (un carácter).
+
+```sql
+-- Nombres que empiezan por "A"
+SELECT name
+FROM users
+WHERE name LIKE 'A%';
+```
+
+```sql
+-- Correos del dominio example.com
+SELECT email
+FROM users
+WHERE email LIKE '%@example.com';
+```
+
+## Funciones de fecha
+
+En el dataset las fechas son texto `AAAA-MM-DD`, pero SQLite incluye funciones específicas:
+
+```sql
+SELECT order_date,
+       DATE(order_date) AS fecha,
+       STRFTIME('%Y', order_date) AS anio,
+       JULIANDAY(order_date) - JULIANDAY('2024-01-01') AS dias_desde_inicio
+FROM orders;
+```
+
+Algunas útiles: `DATE()`, `TIME()`, `STRFTIME(formato, fecha)` y `JULIANDAY()` para operar con fechas.
+
+## Concatenación
+
+```sql
+SELECT name || ' (' || country || ')' AS presentacion
+FROM users;
+```
+
+El operador `||` une texto. También existe `CONCAT(a, b, c)` en muchos motores.
+
+## Puntos clave
+
+- `UPPER`, `LOWER`, `LENGTH`, `SUBSTR`, `TRIM`, `REPLACE` son las funciones de texto básicas.
+- `LIKE` con `%` y `_` busca patrones.
+- `||` concatena cadenas.
+- `STRFTIME` y `DATE` manejan fechas; cada motor tiene sus propias variantes.
+
+La siguiente lección entra en temas de diseño de bases: **los índices**.

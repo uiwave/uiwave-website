@@ -1,0 +1,83 @@
+---
+import { asc, eq } from 'drizzle-orm';
+import Layout from '@/layouts/Layout.astro';
+import Card from '@/components/ui/Card.astro';
+import Button from '@/components/ui/Button.astro';
+import Badge from '@/components/ui/Badge.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import { db } from '@/lib/db';
+import { exam as examTable, examAttempt, examQuestion } from '@/lib/schema';
+
+const exams = await db.select().from(examTable).orderBy(asc(examTable.order));
+
+const { user } = Astro.locals;
+
+const attempts = user
+  ? await db.select().from(examAttempt).where(eq(examAttempt.userId, user.id))
+  : [];
+
+const questionCounts = await db
+  .select({ examId: examQuestion.examId })
+  .from(examQuestion);
+
+const countByExam = questionCounts.reduce<Record<string, number>>((acc, row) => {
+  acc[row.examId] = (acc[row.examId] ?? 0) + 1;
+  return acc;
+}, {});
+
+const bestByExam = new Map<string, (typeof examAttempt.$inferSelect)>();
+for (const attempt of attempts) {
+  const current = bestByExam.get(attempt.examId);
+  if (!current || attempt.score > current.score) {
+    bestByExam.set(attempt.examId, attempt);
+  }
+}
+---
+
+<Layout title="Exámenes" noindex>
+  <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+    <div class="mb-10">
+      <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Exámenes</h1>
+      <p class="mt-2 max-w-2xl text-muted-foreground">
+        Pon a prueba lo aprendido. Cada examen combina preguntas de opción múltiple con preguntas
+        de SQL evaluadas en el servidor. Consulta el porcentaje de aprobación de cada examen.
+      </p>
+    </div>
+
+    {exams.length === 0 ? (
+      <EmptyState title="Aún no hay exámenes" description="Los exámenes estarán disponibles próximamente." />
+    ) : (
+      <div class="space-y-4">
+        {exams.map((item) => {
+          const best = bestByExam.get(item.id);
+          const passed = Boolean(best?.passed);
+          return (
+            <Card class="flex flex-wrap items-center justify-between gap-4">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h2 class="text-lg font-semibold">{item.title}</h2>
+                  {passed && <Badge variant="success">Aprobado</Badge>}
+                </div>
+                {item.description && (
+                  <p class="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                )}
+                <p class="mt-2 text-xs text-muted-foreground">
+                  {countByExam[item.id] ?? 0} preguntas · ~{item.durationMinutes} min · aprobación {item.passScore}%
+                </p>
+                {best && (
+                  <p class="mt-1 text-xs text-muted-foreground">
+                    Mejor puntuación: <span class="font-semibold tabular-nums">{best.score}%</span>
+                    {passed && <a href={`/exams/result/${best.id}`} class="ml-2 text-primary hover:underline">Ver intento</a>}
+                  </p>
+                )}
+              </div>
+              <Button href={`/exams/${item.slug}`} variant={passed ? 'outline' : 'primary'}>
+                {passed ? 'Reintentar' : 'Comenzar examen'}
+              </Button>
+            </Card>
+          );
+        })}
+      </div>
+    )}
+  </div>
+</Layout>

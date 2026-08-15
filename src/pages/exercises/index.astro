@@ -1,0 +1,113 @@
+---
+import { getCollection } from 'astro:content';
+import { asc, eq } from 'drizzle-orm';
+import Layout from '@/layouts/Layout.astro';
+import Badge from '@/components/ui/Badge.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import { db } from '@/lib/db';
+import { exercise, exerciseAttempt } from '@/lib/schema';
+
+const lessons = (await getCollection('lessons')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+const { user } = Astro.locals;
+
+const exercises = await db
+  .select()
+  .from(exercise)
+  .orderBy(asc(exercise.order));
+
+let solvedIds = new Set<string>();
+if (user) {
+  const attempts = await db
+    .select({ exerciseId: exerciseAttempt.exerciseId })
+    .from(exerciseAttempt)
+    .where(eq(exerciseAttempt.userId, user.id));
+  solvedIds = new Set(attempts.map((row) => row.exerciseId));
+}
+
+const difficultyLabel = {
+  easy: 'Fácil',
+  medium: 'Media',
+  hard: 'Difícil',
+} as const;
+
+const difficultyVariant = {
+  easy: 'default',
+  medium: 'warning',
+  hard: 'destructive',
+} as const;
+
+const lessonsWithExercises = lessons
+  .map((lesson) => ({
+    lesson,
+    exercises: exercises
+      .filter((item) => item.lessonSlug === lesson.data.slug)
+      .sort((a, b) => a.order - b.order),
+  }))
+  .filter((group) => group.exercises.length > 0);
+
+const totalExercises = exercises.length;
+const solvedCount = exercises.filter((item) => solvedIds.has(item.id)).length;
+---
+
+<Layout title="Ejercicios" noindex>
+  <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+    <div class="mb-10">
+      <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Ejercicios</h1>
+      <p class="mt-2 max-w-2xl text-muted-foreground">
+        {totalExercises} ejercicios de SQL con validación automática: escribe tu consulta, ejecútala
+        y el sistema la comparará con el resultado esperado.
+      </p>
+      {user && (
+        <p class="mt-4 text-sm text-muted-foreground">
+          Resueltos: <span class="font-semibold tabular-nums text-foreground">{solvedCount} / {totalExercises}</span>
+        </p>
+      )}
+    </div>
+
+    {lessonsWithExercises.length === 0 ? (
+      <EmptyState title="Aún no hay ejercicios" description="Los ejercicios se publicarán junto con las lecciones del curso." />
+    ) : (
+      <div class="space-y-10">
+        {lessonsWithExercises.map(({ lesson, exercises: lessonExercises }) => (
+          <section>
+            <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <a href={`/lessons/${lesson.data.slug}`} class="text-lg font-semibold hover:text-primary">
+                {lesson.data.title}
+              </a>
+              <span class="text-sm text-muted-foreground">
+                {lessonExercises.filter((item) => solvedIds.has(item.id)).length} / {lessonExercises.length} resueltos
+              </span>
+            </div>
+            <div class="space-y-2">
+              {lessonExercises.map((item) => {
+                const solved = solvedIds.has(item.id);
+                return (
+                  <a
+                    href={`/lessons/${lesson.data.slug}#exercise-${item.id}`}
+                    class="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/50 hover:bg-accent/40"
+                  >
+                    <span
+                      class:list={[
+                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                        solved ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground',
+                      ]}
+                    >
+                      {solved ? '✓' : '•'}
+                    </span>
+                    <span class="min-w-0 flex-1 truncate text-sm font-medium">{item.title}</span>
+                    <Badge variant={difficultyVariant[item.difficulty]}>
+                      {difficultyLabel[item.difficulty]}
+                    </Badge>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+    )}
+  </div>
+</Layout>

@@ -8,6 +8,20 @@
       "when": 1786823574859,
       "tag": "0000_soft_toro",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786826248294,
+      "tag": "0001_amusing_onslaught",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786826535758,
+      "tag": "0002_acoustic_deadpool",
+      "breakpoints": true
     }
   ]
 }

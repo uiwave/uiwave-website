@@ -1,0 +1,44 @@
+---
+interface Props {
+  name?: string;
+  src?: string | null;
+  size?: 'sm' | 'md' | 'lg';
+}
+
+const { name = '?', src, size = 'md' } = Astro.props;
+const initials = name
+  .split(' ')
+  .filter(Boolean)
+  .slice(0, 2)
+  .map((part) => part[0]?.toUpperCase())
+  .join('');
+---
+
+{
+  src ? (
+    <img
+      src={src}
+      alt={name}
+      width={96}
+      height={96}
+      class:list={[
+        'shrink-0 rounded-full bg-muted object-cover ring-1 ring-border',
+        size === 'sm' && 'h-8 w-8',
+        size === 'md' && 'h-10 w-10',
+        size === 'lg' && 'h-20 w-20 text-xl',
+      ]}
+    />
+  ) : (
+    <span
+      class:list={[
+        'flex shrink-0 items-center justify-center rounded-full bg-primary/15 font-semibold text-primary ring-1 ring-border',
+        size === 'sm' && 'h-8 w-8 text-xs',
+        size === 'md' && 'h-10 w-10 text-sm',
+        size === 'lg' && 'h-20 w-20 text-2xl',
+      ]}
+      aria-hidden="true"
+    >
+      {initials}
+    </span>
+  )
+}

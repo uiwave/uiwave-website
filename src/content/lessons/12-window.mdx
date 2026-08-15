@@ -1,0 +1,89 @@
+---
+title: "Funciones de ventana"
+slug: "window"
+order: 12
+description: "Rankings, totales acumulados y comparaciones entre filas sin perder el detalle."
+difficulty: "avanzado"
+minutes: 18
+---
+
+Las funciones de ventana calculan valores sobre un **conjunto de filas relacionado** con la fila actual, sin colapsar el detalle como hace `GROUP BY`.
+
+## La sintaxis
+
+```sql
+SELECT name,
+       price,
+       RANK() OVER (ORDER BY price DESC) AS ranking
+FROM products;
+```
+
+`OVER (...)` define la "ventana": cómo se agrupan y ordenan las filas para el cálculo.
+
+## RANK y ROW_NUMBER
+
+```sql
+SELECT name,
+       price,
+       ROW_NUMBER() OVER (ORDER BY price DESC) AS posicion,
+       RANK() OVER (ORDER BY price DESC) AS ranking
+FROM products;
+```
+
+- `ROW_NUMBER` asigna 1, 2, 3... sin empates.
+- `RANK` deja huecos tras los empates (1, 2, 2, 4).
+- `DENSE_RANK` no deja huecos (1, 2, 2, 3).
+
+## Particiones con PARTITION BY
+
+`PARTITION BY` divide las filas en grupos independientes, como un `GROUP BY` dentro de la ventana:
+
+```sql
+SELECT name,
+       category_id,
+       price,
+       RANK() OVER (PARTITION BY category_id ORDER BY price DESC) AS ranking_categoria
+FROM products;
+```
+
+Cada categoría reinicia su ranking en 1.
+
+## Totales acumulados con SUM
+
+```sql
+SELECT order_date,
+       total,
+       SUM(total) OVER (ORDER BY order_date) AS acumulado
+FROM orders;
+```
+
+La ventana acumula el total fila a fila siguiendo el orden de fecha.
+
+## Comparar con la fila anterior
+
+`LAG` trae el valor de la fila anterior; `LEAD`, el de la siguiente:
+
+```sql
+SELECT order_date,
+       total,
+       LAG(total) OVER (ORDER BY order_date) AS total_anterior,
+       total - LAG(total) OVER (ORDER BY order_date) AS diferencia
+FROM orders;
+```
+
+## Ventana vs GROUP BY
+
+| GROUP BY | Función de ventana |
+| -------- | ------------------ |
+| Colapsa N filas en 1 | Conserva todas las filas |
+| Pierde el detalle | Añade una columna calculada |
+| No permite comparar filas adyacentes | `LAG`/`LEAD` lo hacen fácil |
+
+## Puntos clave
+
+- `OVER (PARTITION BY ... ORDER BY ...)` define la ventana.
+- `ROW_NUMBER`, `RANK` y `DENSE_RANK` numeran filas.
+- `SUM(col) OVER (ORDER BY ...)` calcula acumulados.
+- `LAG` y `LEAD` comparan con filas vecinas.
+
+Con esto termina el contenido del curso. Asegúrate de resolver los ejercicios de cada lección y luego pon a prueba todo con los exámenes. Cuando completes todas las lecciones y apruebes los exámenes, podrás generar tu **certificado**. ¡Felicidades por llegar hasta aquí!

@@ -1,6 +1,91 @@
 ---
+import { getCollection } from 'astro:content';
 import Layout from '@/layouts/Layout.astro';
+import Button from '@/components/ui/Button.astro';
+import Card from '@/components/ui/Card.astro';
+import Badge from '@/components/ui/Badge.astro';
+import { SITE_NAME, SITE_TAGLINE } from '@/lib/site';
+
+const lessonCount = (await getCollection('lessons')).length;
+
+const features = [
+  {
+    title: 'Aprende haciendo',
+    description: 'Cada lección tiene ejemplos que puedes ejecutar al instante en el playground, sin instalar nada.',
+  },
+  {
+    title: 'Validación automática',
+    description: 'Los ejercicios comparan tu resultado con el esperado y te dicen exactamente qué ajustar.',
+  },
+  {
+    title: 'Progreso y certificado',
+    description: 'Marca tu avance, aprueba los exámenes y obtén un certificado verificable con URL pública.',
+  },
+];
+
+const steps = [
+  { number: '01', title: 'Inicia sesión con GitHub', description: 'Un solo clic y tu cuenta queda lista.' },
+  { number: '02', title: 'Completa las lecciones', description: `${lessonCount} lecciones interactivas con ejercicios.` },
+  { number: '03', title: 'Aprueba los exámenes', description: 'Valida lo aprendido con exámenes evaluados en el servidor.' },
+  { number: '04', title: 'Comparte tu certificado', description: 'Perfil público y certificado verificable para tu CV.' },
+];
 ---
 
-<Layout>
+<Layout title={SITE_TAGLINE} description="Plataforma gratuita para aprender SQL desde cero: lecciones interactivas, playground con SQLite en el navegador, ejercicios, exámenes y certificado.">
+  <section class="relative overflow-hidden">
+    <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+      <div class="absolute -top-32 left-1/2 h-96 w-[48rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+    </div>
+    <div class="mx-auto max-w-6xl px-4 pb-20 pt-24 text-center sm:px-6">
+      <Badge variant="outline" class="mb-6">
+        {lessonCount} lecciones · playground · exámenes · certificado
+      </Badge>
+      <h1 class="mx-auto max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">
+        Aprende SQL <span class="text-primary">escribiendo SQL</span>
+      </h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+        Un curso interactivo de SQL en español: lecciones claras, un playground con SQLite que
+        corre en tu navegador, ejercicios con validación automática y un certificado al terminar.
+      </p>
+      <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
+        <Button href="/lessons" size="lg">Empezar el curso</Button>
+        <Button href="/playground" size="lg" variant="outline">Abrir el playground</Button>
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+    <div class="grid gap-6 md:grid-cols-3">
+      {features.map((feature) => (
+        <Card>
+          <h2 class="text-lg font-semibold">{feature.title}</h2>
+          <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
+        </Card>
+      ))}
+    </div>
+  </section>
+
+  <section class="border-t border-border bg-muted/30">
+    <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+      <h2 class="text-center text-2xl font-bold tracking-tight sm:text-3xl">Cómo funciona</h2>
+      <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {steps.map((step) => (
+          <div class="relative rounded-xl border border-border bg-card p-6">
+            <span class="text-sm font-bold text-primary">{step.number}</span>
+            <h3 class="mt-2 font-semibold">{step.title}</h3>
+            <p class="mt-1 text-sm text-muted-foreground">{step.description}</p>
+          </div>
+        ))}
+      </div>
+      <div class="mt-14 rounded-2xl border border-primary/30 bg-primary/5 p-8 text-center sm:p-12">
+        <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">¿Listo para dominar SQL?</h2>
+        <p class="mx-auto mt-3 max-w-xl text-muted-foreground">
+          Sin costo, sin instalaciones. Solo necesitas una cuenta de GitHub para guardar tu progreso.
+        </p>
+        <div class="mt-8">
+          <Button href="/login" size="lg">Comenzar ahora</Button>
+        </div>
+      </div>
+    </div>
+  </section>
 </Layout>

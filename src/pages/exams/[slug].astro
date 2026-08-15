@@ -1,0 +1,27 @@
+---
+import { eq } from 'drizzle-orm';
+import Layout from '@/layouts/Layout.astro';
+import ExamRunner from '@/components/exams/ExamRunner.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import Button from '@/components/ui/Button.astro';
+import { db } from '@/lib/db';
+import { exam as examTable } from '@/lib/schema';
+
+const { slug } = Astro.params;
+
+const [item] = await db.select().from(examTable).where(eq(examTable.slug, slug ?? ''));
+---
+
+{
+  item ? (
+    <ExamRunner examId={item.id} />
+  ) : (
+    <Layout title="Examen no encontrado" noindex>
+      <div class="mx-auto max-w-3xl px-4 py-20">
+        <EmptyState title="Examen no encontrado" description="El examen que buscas no existe o fue eliminado.">
+          <Button href="/exams">Ver exámenes</Button>
+        </EmptyState>
+      </div>
+    </Layout>
+  )
+}

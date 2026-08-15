@@ -1,0 +1,82 @@
+---
+title: "NULL: el valor desconocido"
+slug: "null"
+order: 8
+description: "Entiende qué significa NULL y cómo manejarlo en las consultas."
+difficulty: "basico"
+minutes: 10
+---
+
+`NULL` representa **la ausencia de valor**: no es cero, ni texto vacío, ni falso. Es "desconocido". Cualquier operación con `NULL` produce `NULL`.
+
+## NULL no se compara con =
+
+```sql
+-- Esto NO funciona
+SELECT *
+FROM users
+WHERE country = NULL;
+```
+
+Para buscar valores nulos se usa `IS NULL`; para los no nulos, `IS NOT NULL`:
+
+```sql
+SELECT *
+FROM users
+WHERE country IS NULL;
+```
+
+```sql
+SELECT *
+FROM users
+WHERE country IS NOT NULL;
+```
+
+## NULL en operaciones
+
+`NULL` "contamina" las operaciones aritméticas y de concatenación:
+
+```sql
+-- Si stock fuera NULL, el resultado también lo es
+SELECT name, stock * 2 AS doble
+FROM products;
+```
+
+La función `COALESCE` sustituye los nulos por un valor alternativo:
+
+```sql
+SELECT name,
+       COALESCE(stock, 0) AS stock_seguro
+FROM products;
+```
+
+## NULL en agregaciones
+
+Las funciones de agregación **ignoran** los nulos:
+
+- `COUNT(columna)` no cuenta los nulos de esa columna.
+- `SUM`, `AVG`, `MIN`, `MAX` ignoran filas con `NULL` (pero si todas son nulas, el resultado es `NULL`).
+- `COUNT(*)` cuenta todas las filas, tengan o no nulos.
+
+```sql
+SELECT COUNT(*) AS filas,
+       COUNT(stock) AS con_stock,
+       AVG(stock) AS promedio_stock
+FROM products;
+```
+
+## Comparaciones con NULL
+
+Con `NULL`, casi toda comparación da "desconocido", no `TRUE` ni `FALSE`:
+
+- `age > 25` sobre un `age` nulo → desconocido (la fila se descarta).
+- `NOT (age > 25)` sobre un nulo → también desconocido.
+
+## Puntos clave
+
+- `NULL` significa "sin valor", no "cero".
+- Se detecta con `IS NULL` / `IS NOT NULL`.
+- `COALESCE(a, b, c)` devuelve el primer valor no nulo.
+- Las agregaciones ignoran los nulos; `COUNT(*)` no.
+
+La siguiente lección habla de **índices**, la herramienta que hace rápidas las consultas.

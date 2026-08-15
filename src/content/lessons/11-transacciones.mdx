@@ -1,0 +1,86 @@
+---
+title: "Transacciones"
+slug: "transacciones"
+order: 11
+description: "Agrupa varias operaciones en una unidad atómica con BEGIN, COMMIT y ROLLBACK."
+difficulty: "avanzado"
+minutes: 12
+---
+
+Una transacción agrupa varias operaciones en una **única unidad atómica**: o se aplican todas, o ninguna.
+
+## BEGIN, COMMIT y ROLLBACK
+
+```sql
+BEGIN;
+
+UPDATE products
+SET stock = stock - 1
+WHERE id = 1;
+
+UPDATE products
+SET stock = stock + 1
+WHERE id = 4;
+
+COMMIT;
+```
+
+- `BEGIN` abre la transacción.
+- `COMMIT` confirma todos los cambios.
+- `ROLLBACK` los descarta y vuelve al estado inicial.
+
+Si la segunda sentencia falla, un `ROLLBACK` deja la base exactamente como estaba antes del `BEGIN`.
+
+## Ejemplo clásico: la transferencia
+
+```sql
+BEGIN;
+
+UPDATE users
+SET balance = balance - 100
+WHERE id = 1;
+
+UPDATE users
+SET balance = balance + 100
+WHERE id = 2;
+
+COMMIT;
+```
+
+Sin transacción, si la segunda actualización fallara, el dinero desaparecería.
+
+## ACID
+
+Las transacciones garantizan cuatro propiedades (ACID):
+
+| Propiedad | Significado |
+| --------- | ----------- |
+| **Atomicidad** | Todo o nada |
+| **Consistencia** | La base queda en un estado válido |
+| **Aislamiento** | Las transacciones no interfieren entre sí |
+| **Durabilidad** | Lo confirmado sobrevive a fallos |
+
+## Comportamiento por defecto
+
+En SQLite (y en casi todos los motores) cada sentencia es una transacción implícita: si falla, se deshace sola. `BEGIN` agrupa varias sentencias en una sola unidad.
+
+```sql
+-- Dos sentencias independientes: si la 2ª falla, la 1ª ya está aplicada
+UPDATE products SET stock = 0 WHERE id = 1;
+UPDATE products SET stock = 0 WHERE id = 99999;
+
+-- Las mismas dos, en una transacción: si la 2ª falla, nada se aplica
+BEGIN;
+UPDATE products SET stock = 0 WHERE id = 1;
+UPDATE products SET stock = 0 WHERE id = 99999;
+ROLLBACK;
+```
+
+## Puntos clave
+
+- `BEGIN` + `COMMIT` = cambios agrupados y permanentes.
+- `ROLLBACK` deshace todo lo que no se haya confirmado.
+- Las transacciones garantizan ACID.
+- Cualquier operación que toque varias tablas (transferencias, pedidos con detalle...) debe ir en una transacción.
+
+La última lección del curso: **funciones de ventana**, el análisis avanzado de series y rankings.

@@ -1,0 +1,62 @@
+---
+title: "SELECT: la base de todo"
+slug: "select"
+order: 1
+description: "Aprende a consultar datos con la sentencia SELECT, el punto de partida de SQL."
+difficulty: "basico"
+minutes: 10
+---
+
+SELECT es la sentencia más importante de SQL: sirve para **leer datos** de una base de datos. Toda consulta comienza con `SELECT` y, casi siempre, termina indicando de qué tabla queremos leer con `FROM`.
+
+## Sintaxis básica
+
+```sql
+SELECT columna1, columna2
+FROM nombre_de_tabla;
+```
+
+Si quieres todas las columnas de una tabla, usa el comodín `*`:
+
+```sql
+SELECT *
+FROM users;
+```
+
+## Columnas específicas
+
+Elegir columnas concretas en lugar de `*` hace las consultas más legibles y eficientes:
+
+```sql
+SELECT name, email
+FROM users;
+```
+
+## Alias con AS
+
+Puedes renombrar una columna en el resultado con `AS`. Es útil cuando el nombre original no es claro o al trabajar con funciones:
+
+```sql
+SELECT name AS nombre, age AS edad
+FROM users;
+```
+
+## Una consulta simple
+
+Prueba esto en el [playground](/playground) y observa el resultado:
+
+```sql
+SELECT id, name, country
+FROM users;
+```
+
+Verás una tabla con los datos de los usuarios registrados en el dataset de ejemplo.
+
+## Puntos clave
+
+- `SELECT` define **qué columnas** quieres ver.
+- `FROM` indica **de qué tabla** provienen.
+- El `*` trae todas las columnas; es cómodo pero conviene evitarlo en consultas de producción.
+- El punto y coma `;` marca el final de la sentencia (aunque en muchos clientes es opcional).
+
+En la siguiente lección aprenderás a **filtrar** los resultados con `WHERE`, que es donde SQL realmente brilla.

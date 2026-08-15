@@ -1,0 +1,147 @@
+---
+import { eq } from 'drizzle-orm';
+import Layout from '@/layouts/Layout.astro';
+import Card from '@/components/ui/Card.astro';
+import Badge from '@/components/ui/Badge.astro';
+import Button from '@/components/ui/Button.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import { db } from '@/lib/db';
+import { certificate, user } from '@/lib/schema';
+import { SITE_NAME } from '@/lib/site';
+import { ensureUsername } from '@/lib/services/user';
+
+const { id } = Astro.params;
+
+const [item] = await db.select().from(certificate).where(eq(certificate.id, id ?? ''));
+
+let ownerName: string | null = null;
+let ownerUsername: string | null = null;
+
+if (item) {
+  const [owner] = await db.select().from(user).where(eq(user.id, item.userId));
+  if (owner) {
+    ownerName = owner.name;
+    ownerUsername = owner.username;
+    if (!ownerUsername) {
+      ownerUsername = await ensureUsername(owner.id, owner.email, owner.name);
+    }
+  }
+}
+---
+
+{
+  item ? (
+    <Layout
+      title={`Certificado verificado · ${SITE_NAME}`}
+      description="Certificado emitido por SQLScholar. Verifica su autenticidad."
+    >
+      <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+        <div class="mb-6 flex items-center justify-between">
+          <Badge variant="success">
+            <span class="flex items-center gap-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+              Certificado verificado
+            </span>
+          </Badge>
+          <span class="text-xs text-muted-foreground">Verificación pública</span>
+        </div>
+
+        <Card padded={false} class="overflow-hidden">
+          <div class="relative border-b-8 border-primary/70 bg-gradient-to-br from-card via-card to-primary/10 p-8 text-center sm:p-14">
+            <div class="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(circle_at_1px_1px,var(--color-border)_1px,transparent_0)] [background-size:24px_24px]" aria-hidden="true" />
+            <div class="relative">
+              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-primary">{SITE_NAME}</p>
+              <p class="mt-8 text-sm uppercase tracking-widest text-muted-foreground">Certificado de finalización</p>
+              <p class="mt-2 font-serif text-4xl font-bold tracking-tight sm:text-5xl">{item.courseName}</p>
+              <p class="mx-auto mt-6 max-w-md text-sm text-muted-foreground">
+                Este certificado acredita que
+              </p>
+              <p class="mt-1 text-2xl font-bold sm:text-3xl">{ownerName()}</p>
+              <p class="mx-auto mt-6 max-w-md text-sm text-muted-foreground">
+                completó satisfactoriamente todas las lecciones y exámenes del curso.
+              </p>
+              <div class="mt-10 flex flex-col items-center justify-center gap-4 text-sm sm:flex-row sm:gap-10">
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-muted-foreground">Fecha de emisión</p>
+                  <p class="mt-1 font-medium">{new Date(item.issuedAt).toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-muted-foreground">Identificador único</p>
+                  <p class="mt-1 font-mono text-xs font-medium">{item.id}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {ownerUsername && (
+          <p class="mt-6 text-center text-sm text-muted-foreground">
+            Verificado para{' '}
+            <a href={`/u/${ownerUsername}`} class="font-medium text-primary hover:underline">
+              @{ownerUsername}
+            </a>
+          </p>
+        )}
+
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Button data-copy-link variant="outline" size="sm">Copiar enlace de verificación</Button>
+          <Button data-share variant="outline" size="sm">Compartir</Button>
+          <Button href="/" variant="ghost" size="sm">Volver al inicio</Button>
+        </div>
+      </div>
+    </Layout>
+  ) : (
+    <Layout title="Certificado no encontrado" description="El certificado que buscas no existe.">
+      <div class="mx-auto max-w-3xl px-4 py-20">
+        <EmptyState title="Certificado no encontrado" description="Este identificador no corresponde a ningún certificado emitido.">
+          <Button href="/">Volver al inicio</Button>
+        </EmptyState>
+      </div>
+    </Layout>
+  )
+}
+
+<script>
+  const copyButton = document.querySelector<HTMLButtonElement>('[data-copy-link]');
+  const shareButton = document.querySelector<HTMLButtonElement>('[data-share]');
+
+  copyButton?.addEventListener('click', async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      copyButton.textContent = '¡Enlace copiado!';
+    } catch {
+      copyButton.textContent = 'No se pudo copiar';
+    }
+    setTimeout(() => {
+      copyButton.textContent = 'Copiar enlace de verificación';
+    }, 2500);
+  });
+
+  shareButton?.addEventListener('click', async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: document.title,
+          text: 'Certificado de finalización del curso de SQL',
+          url,
+        });
+        return;
+      } catch {
+        /* usuario canceló */
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      shareButton.textContent = '¡Enlace copiado!';
+      setTimeout(() => {
+        shareButton.textContent = 'Compartir';
+      }, 2500);
+    } catch {
+      /* sin soporte */
+    }
+  });
+</script>

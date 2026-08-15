@@ -1,0 +1,16 @@
+---
+import { SITE_NAME } from '@/lib/site';
+---
+
+<footer class="border-t border-border">
+  <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row sm:px-6">
+    <p class="text-sm text-muted-foreground">
+      © {new Date().getFullYear()} {SITE_NAME}. Aprende SQL escribiendo SQL.
+    </p>
+    <div class="flex items-center gap-4 text-sm text-muted-foreground">
+      <a href="/lessons" class="hover:text-foreground">Lecciones</a>
+      <a href="/playground" class="hover:text-foreground">Playground</a>
+      <a href="/u" class="hover:text-foreground">Perfiles</a>
+    </div>
+  </div>
+</footer>

@@ -1,47 +1,169 @@
 ---
-import { auth } from '../lib/auth';
+import { getCollection } from 'astro:content';
+import { count, eq } from 'drizzle-orm';
+import Layout from '@/layouts/Layout.astro';
+import Avatar from '@/components/Avatar.astro';
+import Card from '@/components/ui/Card.astro';
+import Button from '@/components/ui/Button.astro';
+import Badge from '@/components/ui/Badge.astro';
+import ProgressBar from '@/components/ui/ProgressBar.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import { getProgress } from '@/lib/services/progress';
+import { ensureUsername } from '@/lib/services/user';
+import { db } from '@/lib/db';
+import { certificate, exam, examAttempt } from '@/lib/schema';
 
-const session = await auth.api.getSession({
-  headers: Astro.request.headers,
-});
+const { user } = Astro.locals;
 
-if (!session) {
-  return Astro.redirect('/login');
+if (user) {
+  await ensureUsername(user.id, user.email, user.name);
 }
+
+const progress = user ? await getProgress(user.id) : null;
+
+const lessons = (await getCollection('lessons')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+const completedSet = new Set(progress?.completedSlugs ?? []);
+const nextLesson = lessons.find((lesson) => !completedSet.has(lesson.data.slug));
+
+const [lastLesson] = [...lessons]
+  .reverse()
+  .filter((lesson) => completedSet.has(lesson.data.slug));
+
+const exams = await db.select().from(exam).orderBy(exam.order);
+
+const attempts = user
+  ? await db.select().from(examAttempt).where(eq(examAttempt.userId, user.id))
+  : [];
+
+const passedExamIds = new Set(
+  attempts.filter((attempt) => attempt.passed).map((attempt) => attempt.examId),
+);
+
+const certificates = user
+  ? await db.select().from(certificate).where(eq(certificate.userId, user.id)).orderBy(certificate.issuedAt)
+  : [];
 ---
 
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>Dashboard</title>
-  </head>
+<Layout title="Dashboard" noindex>
+  <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+    <div class="mb-10 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <Avatar name={user?.name} src={user?.image} size="lg" />
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Hola, {user?.name}</h1>
+          <p class="text-sm text-muted-foreground">
+            {progress && progress.percent === 100
+              ? '¡Completaste el curso! Genera tu certificado.'
+              : 'Continúa tu aprendizaje de SQL.'}
+          </p>
+        </div>
+      </div>
+      <a href="/profile" class="text-sm font-medium text-muted-foreground hover:text-primary">
+        Configurar perfil →
+      </a>
+    </div>
 
-  <body>
-    <main>
-      <h1>Dashboard</h1>
+    <div class="grid gap-6 lg:grid-cols-3">
+      <Card class="lg:col-span-2">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-base font-semibold">Progreso del curso</h2>
+          <span class="text-sm font-semibold tabular-nums text-primary">{progress?.percent ?? 0}%</span>
+        </div>
+        <ProgressBar value={progress?.completed ?? 0} max={progress?.total ?? 0} label="Progreso del curso" />
 
-      <p>
-        Bienvenido, {session.user.name}
-      </p>
+        <div class="mt-4 grid grid-cols-3 gap-3 text-center sm:grid-cols-3">
+          <div class="rounded-lg border border-border bg-muted/30 p-3">
+            <p class="text-xl font-bold tabular-nums">{progress?.completed ?? 0}</p>
+            <p class="text-xs text-muted-foreground">Completadas</p>
+          </div>
+          <div class="rounded-lg border border-border bg-muted/30 p-3">
+            <p class="text-xl font-bold tabular-nums">{(progress?.total ?? 0) - (progress?.completed ?? 0)}</p>
+            <p class="text-xs text-muted-foreground">Pendientes</p>
+          </div>
+          <div class="rounded-lg border border-border bg-muted/30 p-3">
+            <p class="text-xl font-bold tabular-nums">{exams.length}</p>
+            <p class="text-xs text-muted-foreground">Exámenes</p>
+          </div>
+        </div>
 
-      {session.user.image && (
-        <img
-          src={session.user.image}
-          alt={session.user.name}
-          width="80"
-          height="80"
-        />
-      )}
+        {nextLesson ? (
+          <div class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-4">
+            <div class="min-w-0">
+              <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Siguiente lección</p>
+              <p class="truncate font-semibold">{nextLesson.data.title}</p>
+            </div>
+            <Button href={`/lessons/${nextLesson.data.slug}`}>Continuar aprendiendo</Button>
+          </div>
+        ) : (
+          <div class="mt-6 rounded-lg border border-success/40 bg-success/10 p-4 text-sm">
+            Completaste todas las lecciones. <a href="/exams" class="font-semibold text-success underline">Aprobar los exámenes</a> para obtener tu certificado.
+          </div>
+        )}
 
-      <p>{session.user.email}</p>
+        {lastLesson && (
+          <p class="mt-3 text-xs text-muted-foreground">
+            Última completada: <a href={`/lessons/${lastLesson.data.slug}`} class="hover:text-primary">{lastLesson.data.title}</a>
+          </p>
+        )}
+      </Card>
 
-      <form action="/api/logout" method="post">
-        <button type="submit">
-          Cerrar sesión
-        </button>
-      </form>
-    </main>
-  </body>
-</html>
+      <Card>
+        <h2 class="mb-4 text-base font-semibold">Exámenes</h2>
+        {exams.length === 0 ? (
+          <p class="text-sm text-muted-foreground">Aún no hay exámenes.</p>
+        ) : (
+          <ul class="space-y-3">
+            {exams.map((item) => {
+              const passed = passedExamIds.has(item.id);
+              const best = attempts
+                .filter((attempt) => attempt.examId === item.id)
+                .sort((a, b) => b.score - a.score)[0];
+              return (
+                <li>
+                  <a
+                    href={passed ? `/exams/result/${best?.id ?? ''}` : `/exams/${item.slug}`}
+                    class="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5 transition-colors hover:border-primary/50 hover:bg-accent/40"
+                  >
+                    <div class="min-w-0">
+                      <p class="truncate text-sm font-medium">{item.title}</p>
+                      {best && (
+                        <p class="text-xs text-muted-foreground">Mejor puntuación: {best.score}%</p>
+                      )}
+                    </div>
+                    {passed ? (
+                      <Badge variant="success">Aprobado</Badge>
+                    ) : (
+                      <Badge variant="outline">{best ? `${best.score}%` : 'Pendiente'}</Badge>
+                    )}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <div class="mt-6 border-t border-border pt-4">
+          <h3 class="mb-3 text-base font-semibold">Certificados</h3>
+          {certificates.length === 0 ? (
+            <p class="text-sm text-muted-foreground">
+              Completa todas las lecciones y aprueba los exámenes para generar tu certificado.
+            </p>
+          ) : (
+            <ul class="space-y-2">
+              {certificates.map((item) => (
+                <li>
+                  <a href={`/certificate/${item.id}`} class="text-sm font-medium text-primary hover:underline">
+                    Ver certificado →
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Card>
+    </div>
+  </div>
+</Layout>

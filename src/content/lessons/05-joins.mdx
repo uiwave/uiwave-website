@@ -1,0 +1,77 @@
+---
+title: "JOIN: unir tablas"
+slug: "joins"
+order: 5
+description: "Combina datos de varias tablas con INNER JOIN, LEFT JOIN y más."
+difficulty: "intermedio"
+minutes: 20
+---
+
+Una base de datos relacional guarda información repartida en varias tablas. Para responder preguntas que tocan varias de ellas necesitas **unir** las tablas con `JOIN`.
+
+## Las tablas de ejemplo
+
+En el dataset del playground:
+
+- `users` — usuarios.
+- `products` — productos.
+- `orders` — pedidos, que referencian a un usuario (`user_id`) y un producto (`product_id`).
+
+El pedido #1 lo hizo la usuaria `Laura Gómez` y compró el producto `Refresco cola 600ml`. Esa información vive en tres tablas distintas y `JOIN` la une.
+
+## INNER JOIN
+
+Devuelve solo las filas que **coinciden** en ambas tablas:
+
+```sql
+SELECT o.id, u.name, p.name AS producto
+FROM orders o
+JOIN users u ON o.user_id = u.id
+JOIN products p ON o.product_id = p.id;
+```
+
+- `o`, `u` y `p` son **alias** de tabla que acortan el código.
+- `ON` indica la condición de emparejamiento.
+
+## LEFT JOIN
+
+Devuelve **todas** las filas de la tabla izquierda y las coincidencias de la derecha; si no hay coincidencia, las columnas de la derecha quedan `NULL`:
+
+```sql
+SELECT u.name, o.id AS pedido
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id;
+```
+
+Todos los usuarios aparecen, tengan o no pedidos.
+
+## Tipos de JOIN
+
+| JOIN | Devuelve |
+| ---- | -------- |
+| `INNER JOIN` | Solo coincidencias |
+| `LEFT JOIN` | Todo lo de la izquierda + coincidencias |
+| `RIGHT JOIN` | Todo lo de la derecha + coincidencias |
+| `FULL JOIN` | Todo de ambas tablas |
+| `CROSS JOIN` | Producto cartesiano |
+
+## JOIN con WHERE
+
+Puedes combinar JOINs con filtros y agregaciones:
+
+```sql
+SELECT u.name, SUM(o.total) AS total_gastado
+FROM users u
+JOIN orders o ON o.user_id = u.id
+GROUP BY u.name
+ORDER BY total_gastado DESC;
+```
+
+## Puntos clave
+
+- `JOIN ... ON condición` une dos tablas por una relación.
+- Los alias de tabla (`users u`) hacen el SQL más corto.
+- `INNER JOIN` elimina filas sin coincidencia; `LEFT JOIN` las conserva.
+- Con tablas grandes, siémpre define la condición `ON` correcta: un JOIN sin condición correcta multiplica filas.
+
+La siguiente lección enseña a **modificar datos**: `INSERT`, `UPDATE` y `DELETE`.

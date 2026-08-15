@@ -1,0 +1,40 @@
+---
+import { getCollection, render } from 'astro:content';
+import Layout from '@/layouts/Layout.astro';
+import LessonLayout from '@/components/lessons/LessonLayout.astro';
+import { isLessonCompleted } from '@/lib/services/progress';
+
+const { slug } = Astro.params;
+
+const allLessons = (await getCollection('lessons')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+const lesson = allLessons.find((item) => item.data.slug === slug);
+
+if (!lesson) {
+  return Astro.redirect('/lessons');
+}
+
+const { Content } = await render(lesson);
+const lessonNumber = allLessons.findIndex((l) => l.data.slug === lesson.data.slug) + 1;
+
+const { user } = Astro.locals;
+const isCompleted = user ? await isLessonCompleted(user.id, lesson.data.slug) : false;
+---
+
+<Layout
+  title={lesson.data.title}
+  description={lesson.data.description}
+  ogType="article"
+>
+  <LessonLayout
+    slug={lesson.data.slug}
+    isCompleted={isCompleted}
+    lessonNumber={lessonNumber}
+    totalLessons={allLessons.length}
+    authenticated={Boolean(user)}
+  >
+    <Content />
+  </LessonLayout>
+</Layout>

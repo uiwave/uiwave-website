@@ -1,0 +1,182 @@
+---
+import { getCollection } from 'astro:content';
+import { and, eq, inArray } from 'drizzle-orm';
+import Badge from '@/components/ui/Badge.astro';
+import ProgressBar from '@/components/ui/ProgressBar.astro';
+import Button from '@/components/ui/Button.astro';
+import Exercise from '@/components/exercises/Exercise.astro';
+import LessonNavigation from '@/components/lessons/LessonNavigation.astro';
+import { db } from '@/lib/db';
+import { exercise as exerciseTable, exerciseAttempt } from '@/lib/schema';
+
+interface Props {
+  slug: string;
+  isCompleted: boolean;
+  lessonNumber: number;
+  totalLessons: number;
+  authenticated: boolean;
+}
+
+const {
+  slug,
+  isCompleted,
+  lessonNumber,
+  totalLessons,
+  authenticated,
+} = Astro.props;
+
+const lessons = (await getCollection('lessons')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+const index = lessons.findIndex((lesson) => lesson.data.slug === slug);
+const current = lessons[index];
+const prev = index > 0 ? lessons[index - 1] : undefined;
+const next = index < lessons.length - 1 ? lessons[index + 1] : undefined;
+
+const exercises = await db
+  .select()
+  .from(exerciseTable)
+  .where(eq(exerciseTable.lessonSlug, slug))
+  .orderBy(exerciseTable.order);
+
+let solvedExerciseIds = new Set<string>();
+if (authenticated && Astro.locals.user) {
+  const conditions = [eq(exerciseAttempt.userId, Astro.locals.user.id), eq(exerciseAttempt.correct, true)];
+  if (exercises.length > 0) {
+    conditions.push(inArray(exerciseAttempt.exerciseId, exercises.map((e) => e.id)));
+  }
+  const attempts = await db
+    .select({ exerciseId: exerciseAttempt.exerciseId })
+    .from(exerciseAttempt)
+    .where(and(...conditions));
+  solvedExerciseIds = new Set(attempts.map((row) => row.exerciseId));
+}
+
+const allSolved = exercises.length > 0 && exercises.every((item) => solvedExerciseIds.has(item.id));
+const canComplete = exercises.length === 0 || allSolved;
+
+const difficultyLabel = {
+  basico: 'Básico',
+  intermedio: 'Intermedio',
+  avanzado: 'Avanzado',
+}[current.data.difficulty];
+
+const difficultyVariant = {
+  basico: 'default',
+  intermedio: 'warning',
+  avanzado: 'destructive',
+}[current.data.difficulty] as 'default' | 'warning' | 'destructive';
+---
+
+<div class="mx-auto max-w-3xl px-4 py-10 sm:px-6" data-lesson-slug={slug}>
+  <div class="mb-8">
+    <div class="mb-4 flex flex-wrap items-center gap-3">
+      <Badge variant="outline">
+        Lección {lessonNumber} de {totalLessons}
+      </Badge>
+      <Badge variant={difficultyVariant}>{difficultyLabel}</Badge>
+      <Badge variant="outline">~{current.data.minutes} min</Badge>
+    </div>
+
+    <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{current.data.title}</h1>
+    <p class="mt-3 text-lg text-muted-foreground">{current.data.description}</p>
+
+    {authenticated && (
+      <div class="mt-6 rounded-xl border border-border bg-card p-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="min-w-0 flex-1">
+            <ProgressBar value={lessonNumber} max={totalLessons} label={`Progreso del curso: ${lessonNumber} de ${totalLessons}`} />
+          </div>
+          <div data-lesson-complete>
+            {isCompleted ? (
+              <Badge variant="success">Completada ✓</Badge>
+            ) : (
+              <Button
+                data-complete-button
+                size="sm"
+                variant={canComplete ? 'primary' : 'outline'}
+                disabled={!canComplete}
+                title={canComplete ? 'Marcar lección como completada' : 'Resuelve todos los ejercicios para completar la lección'}
+              >
+                {canComplete ? 'Marcar como completada' : 'Resuelve los ejercicios'}
+              </Button>
+            )}
+          </div>
+        </div>
+        {!canComplete && !isCompleted && (
+          <p class="mt-2 text-xs text-muted-foreground">
+            Completa los ejercicios de esta lección para poder marcarla como terminada.
+          </p>
+        )}
+      </div>
+    )}
+  </div>
+
+  <article class="prose prose-neutral dark:prose-invert max-w-none prose-pre:rounded-xl prose-pre:border prose-pre:border-border">
+    <slot />
+  </article>
+
+  {exercises.length > 0 && (
+    <section class="mt-12">
+      <h2 class="mb-4 text-2xl font-bold tracking-tight">Ejercicios</h2>
+      <div class="space-y-6">
+        {exercises.map((item, exerciseIndex) => (
+          <Exercise
+            exercise={item}
+            index={exerciseIndex + 1}
+            solved={solvedExerciseIds.has(item.id)}
+            authenticated={authenticated}
+          />
+        ))}
+      </div>
+    </section>
+  )}
+
+  {authenticated && !isCompleted && canComplete && (
+    <div class="mt-8 flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
+      <p class="text-sm text-muted-foreground">¿Terminaste? Guarda tu progreso.</p>
+      <Button data-complete-bottom size="sm">Completar lección</Button>
+    </div>
+  )}
+
+  <LessonNavigation
+    prev={prev ? { slug: prev.data.slug, title: prev.data.title } : undefined}
+    next={next ? { slug: next.data.slug, title: next.data.title } : undefined}
+  />
+</div>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-lesson-slug]');
+  const slug = root?.dataset.lessonSlug;
+
+  const completeButtons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('[data-complete-button], [data-complete-bottom]'),
+  );
+
+  const markComplete = async (button: HTMLButtonElement) => {
+    if (!slug) return;
+    button.disabled = true;
+    try {
+      const response = await fetch(`/api/lessons/${encodeURIComponent(slug)}/complete`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        button.disabled = false;
+      }
+    } catch {
+      button.disabled = false;
+    }
+  };
+
+  completeButtons.forEach((button) => {
+    button.addEventListener('click', () => void markComplete(button));
+  });
+
+  if (!document.querySelector('[data-complete-button]')) {
+    window.addEventListener('exercise-solved', () => {
+      window.location.reload();
+    });
+  }
+</script>

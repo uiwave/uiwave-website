@@ -1,0 +1,75 @@
+---
+title: "Agregados y GROUP BY"
+slug: "group-by"
+order: 4
+description: "Resume conjuntos de filas con COUNT, SUM, AVG, MIN y MAX."
+difficulty: "basico"
+minutes: 15
+---
+
+Las funciones de agregación resumen **muchas filas en un solo valor**. Son la herramienta más poderosa de SQL para análisis.
+
+## Las cinco funciones básicas
+
+| Función | Qué hace |
+| ------- | -------- |
+| `COUNT(*)` | Cuenta filas |
+| `COUNT(columna)` | Cuenta valores no nulos de una columna |
+| `SUM(columna)` | Suma los valores numéricos |
+| `AVG(columna)` | Calcula el promedio |
+| `MIN(columna)` / `MAX(columna)` | Valor mínimo / máximo |
+
+```sql
+SELECT COUNT(*) AS total_usuarios
+FROM users;
+```
+
+```sql
+SELECT AVG(price) AS precio_promedio
+FROM products;
+```
+
+## GROUP BY: agregar por grupos
+
+Sin `GROUP BY`, la agregación opera sobre toda la tabla. Con `GROUP BY` agrupas filas por los valores de una columna y agregas **por grupo**:
+
+```sql
+SELECT country, COUNT(*) AS usuarios
+FROM users
+GROUP BY country;
+```
+
+El resultado es una fila por país con el número de usuarios de cada uno.
+
+## HAVING: filtrar grupos
+
+`WHERE` filtra filas antes de agrupar; `HAVING` filtra grupos **después** de agregar:
+
+```sql
+SELECT category_id, COUNT(*) AS productos
+FROM products
+GROUP BY category_id
+HAVING COUNT(*) > 1;
+```
+
+## Reglas importantes
+
+- Toda columna del `SELECT` que no sea función de agregación debe estar en `GROUP BY`.
+- El orden de las cláusulas es fijo: `SELECT` → `FROM` → `WHERE` → `GROUP BY` → `HAVING` → `ORDER BY` → `LIMIT`.
+
+```sql
+SELECT country, AVG(age) AS edad_promedio
+FROM users
+WHERE age > 20
+GROUP BY country
+HAVING COUNT(*) >= 1
+ORDER BY edad_promedio DESC;
+```
+
+## Puntos clave
+
+- `COUNT`, `SUM`, `AVG`, `MIN`, `MAX` resumen filas en un valor.
+- `GROUP BY` divide la tabla en grupos y agrega por cada uno.
+- `HAVING` filtra grupos; `WHERE` filtra filas.
+
+La siguiente lección conecta tablas entre sí: **los JOINs**.

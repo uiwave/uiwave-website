@@ -1,0 +1,64 @@
+---
+title: "Ordenar y limitar: ORDER BY y LIMIT"
+slug: "order-limit"
+order: 3
+description: "Controla el orden y la cantidad de filas que devuelve una consulta."
+difficulty: "basico"
+minutes: 10
+---
+
+Una base de datos no garantiza ningún orden en sus resultados. Para ordenarlos usamos `ORDER BY`; para quedarnos con una cantidad concreta, `LIMIT`.
+
+## ORDER BY
+
+```sql
+SELECT name, price
+FROM products
+ORDER BY price DESC;
+```
+
+- `ASC` ordena ascendente (menor a mayor). Es el valor por defecto.
+- `DESC` ordena descendente (mayor a menor).
+
+## Ordenar por varias columnas
+
+Puedes ordenar por más de una columna; la segunda actúa como desempate:
+
+```sql
+SELECT name, country, age
+FROM users
+ORDER BY country ASC, age DESC;
+```
+
+## LIMIT: los primeros N resultados
+
+```sql
+SELECT name, price
+FROM products
+ORDER BY price DESC
+LIMIT 3;
+```
+
+Esta consulta devuelve los **3 productos más caros**. El orden importa: `LIMIT` sin `ORDER BY` devuelve filas arbitrarias.
+
+## LIMIT con OFFSET
+
+`OFFSET` salta un número de filas antes de empezar a devolver resultados. Es la base de la paginación:
+
+```sql
+SELECT name, price
+FROM products
+ORDER BY price DESC
+LIMIT 3 OFFSET 3;
+```
+
+Devuelve los productos en las posiciones 4 a 6 del ranking.
+
+## Puntos clave
+
+- `ORDER BY` va después de `WHERE` (si existe) y usa `ASC`/`DESC`.
+- `LIMIT n` devuelve como máximo `n` filas.
+- `OFFSET n` omite las primeras `n` filas.
+- En SQLite puedes escribir también `LIMIT n OFFSET m` como `LIMIT m, n`.
+
+Ya sabes ordenar y limitar. La siguiente lección introduce las **funciones de agregación** y `GROUP BY`.

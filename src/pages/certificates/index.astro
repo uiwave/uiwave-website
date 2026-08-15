@@ -1,0 +1,110 @@
+---
+import { eq } from 'drizzle-orm';
+import Layout from '@/layouts/Layout.astro';
+import Card from '@/components/ui/Card.astro';
+import Button from '@/components/ui/Button.astro';
+import Badge from '@/components/ui/Badge.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import { db } from '@/lib/db';
+import { certificate, exam, examAttempt } from '@/lib/schema';
+import { getProgress } from '@/lib/services/progress';
+import { ensureUsername } from '@/lib/services/user';
+
+const { user } = Astro.locals;
+
+if (user) {
+  await ensureUsername(user.id, user.email, user.name);
+}
+
+const progress = user ? await getProgress(user.id) : null;
+const allLessonsDone = progress ? progress.percent === 100 : false;
+
+const exams = await db.select().from(exam);
+const attempts = user
+  ? await db.select().from(examAttempt).where(eq(examAttempt.userId, user.id))
+  : [];
+const passedExamIds = new Set(
+  attempts.filter((attempt) => attempt.passed).map((attempt) => attempt.examId),
+);
+const allExamsPassed = exams.length > 0 && exams.every((item) => passedExamIds.has(item.id));
+const eligible = allLessonsDone && allExamsPassed;
+
+const certificates = user
+  ? await db.select().from(certificate).where(eq(certificate.userId, user.id)).orderBy(certificate.issuedAt)
+  : [];
+---
+
+<Layout title="Mis certificados" noindex>
+  <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <h1 class="text-3xl font-bold tracking-tight">Mis certificados</h1>
+    <p class="mt-2 text-muted-foreground">
+      Completa todas las lecciones y aprueba los exámenes para generar tu certificado verificable.
+    </p>
+
+    {eligible && certificates.length === 0 && (
+      <div class="mt-8 rounded-xl border border-success/40 bg-success/10 p-6">
+        <h2 class="font-semibold">¡Eres elegible para tu certificado!</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Completaste todas las lecciones y aprobaste todos los exámenes.
+        </p>
+        <div class="mt-4">
+          <Button data-generate-certificate>Generar mi certificado</Button>
+        </div>
+      </div>
+    )}
+
+    {certificates.length === 0 && !eligible ? (
+      <div class="mt-10">
+        <EmptyState
+          title="Aún no tienes certificados"
+          description={allLessonsDone
+            ? 'Completaste las lecciones. Aproba todos los exámenes para generar tu certificado.'
+            : `Completa todas las lecciones (${progress?.completed ?? 0} de ${progress?.total ?? 0}) y aprueba todos los exámenes (${passedExamIds.size} de ${exams.length}) para obtener tu certificado.`}
+        >
+          {allLessonsDone ? (
+            <Button href="/exams">Ir a los exámenes</Button>
+          ) : (
+            <Button href="/lessons">Continuar el curso</Button>
+          )}
+        </EmptyState>
+      </div>
+    ) : (
+      <div class="mt-8 space-y-4">
+        {certificates.map((item) => (
+          <Card class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <Badge variant="success">Emitido</Badge>
+              </div>
+              <p class="mt-2 font-semibold">{item.courseName}</p>
+              <p class="text-sm text-muted-foreground">
+                {new Date(item.issuedAt).toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+              <p class="mt-1 font-mono text-xs text-muted-foreground">ID: {item.id}</p>
+            </div>
+            <Button href={`/certificate/${item.id}`}>Ver certificado</Button>
+          </Card>
+        ))}
+      </div>
+    )}
+  </div>
+</Layout>
+
+<script>
+  const generateButton = document.querySelector<HTMLButtonElement>('[data-generate-certificate]');
+
+  generateButton?.addEventListener('click', async () => {
+    generateButton.disabled = true;
+    try {
+      const response = await fetch('/api/certificates/issue', { method: 'POST' });
+      const payload = await response.json();
+      if (response.ok && payload.certificate) {
+        window.location.href = `/certificate/${payload.certificate.id}`;
+        return;
+      }
+      generateButton.disabled = false;
+    } catch {
+      generateButton.disabled = false;
+    }
+  });
+</script>

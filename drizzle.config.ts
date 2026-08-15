@@ -1,7 +1,7 @@
 import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
-  schema: './src/lib/auth-schema.ts',
+  schema: './src/lib/schema.ts',
 
   out: './drizzle',
 

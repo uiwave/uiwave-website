@@ -1,0 +1,188 @@
+---
+import { asc, eq } from 'drizzle-orm';
+import Layout from '@/layouts/Layout.astro';
+import Badge from '@/components/ui/Badge.astro';
+import Button from '@/components/ui/Button.astro';
+import SqlWorkbench from '@/components/SqlWorkbench.astro';
+import Card from '@/components/ui/Card.astro';
+import { db } from '@/lib/db';
+import { exam as examTable, examQuestion, examAttempt } from '@/lib/schema';
+
+interface Props {
+  examId: string;
+}
+
+const { examId } = Astro.props;
+
+const [item] = await db.select().from(examTable).where(eq(examTable.id, examId));
+
+const questions = await db
+  .select()
+  .from(examQuestion)
+  .where(eq(examQuestion.examId, examId))
+  .orderBy(asc(examQuestion.order));
+
+const { user } = Astro.locals;
+
+const myAttempts = user
+  ? await db.select().from(examAttempt).where(eq(examAttempt.userId, user.id))
+  : [];
+
+const bestPassed = myAttempts
+  .filter((attempt) => attempt.examId === examId && attempt.passed)
+  .sort((a, b) => b.score - a.score)[0];
+
+const mcQuestions = questions.filter((q) => q.type === 'multiple_choice');
+const sqlQuestions = questions.filter((q) => q.type === 'sql');
+---
+
+<Layout title={item.title} noindex>
+  <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6" data-exam data-exam-id={item.id}>
+    <div class="mb-8">
+      <div class="flex flex-wrap items-center gap-3">
+        <Badge variant="outline">{questions.length} preguntas</Badge>
+        <Badge variant="outline">~{item.durationMinutes} min</Badge>
+        <Badge variant="outline">Aprobación: {item.passScore}%</Badge>
+      </div>
+      <h1 class="mt-4 text-3xl font-bold tracking-tight">{item.title}</h1>
+      {item.description && <p class="mt-2 text-muted-foreground">{item.description}</p>}
+
+      {bestPassed && (
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-success/40 bg-success/10 p-4">
+          <p class="text-sm">
+            Ya aprobaste este examen con <span class="font-bold tabular-nums">{bestPassed.score}%</span>.
+            Puedes volver a intentarlo para mejorar tu puntuación.
+          </p>
+          <Button href={`/exams/result/${bestPassed.id}`} size="sm" variant="outline">
+            Ver mi mejor intento
+          </Button>
+        </div>
+      )}
+
+      <p class="mt-4 text-sm text-muted-foreground">
+        Las preguntas de opción múltiple se corrigen en el servidor. En las preguntas SQL, escribe y
+        ejecuta tu consulta en el editor; al enviar, el servidor la evaluará contra los datos de ejemplo.
+      </p>
+    </div>
+
+    {mcQuestions.map((question, index) => (
+      <Card class="mb-6" data-mc-question data-question-id={question.id}>
+        <p class="mb-4 font-medium">
+          <span class="mr-2 text-sm font-bold text-primary">{index + 1}.</span>
+          {question.prompt}
+        </p>
+        <fieldset class="space-y-2">
+          <legend class="sr-only">Opciones de la pregunta {index + 1}</legend>
+          {(question.options ?? []).map((option, optionIndex) => (
+            <label
+              class="flex cursor-pointer items-start gap-3 rounded-lg border border-border px-4 py-3 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5 hover:bg-accent/40"
+            >
+              <input
+                type="radio"
+                name={`q-${question.id}`}
+                value={optionIndex}
+                class="mt-0.5 h-4 w-4 accent-(--color-primary)"
+              />
+              <span class="text-sm">{option}</span>
+            </label>
+          ))}
+        </fieldset>
+      </Card>
+    ))}
+
+    {sqlQuestions.map((question, index) => (
+      <Card class="mb-6" data-sql-question data-question-id={question.id}>
+        <p class="mb-4 font-medium">
+          <span class="mr-2 text-sm font-bold text-primary">{mcQuestions.length + index + 1}.</span>
+          {question.prompt}
+        </p>
+        <SqlWorkbench
+          id={`exam-q-${question.id}`}
+          initialSql={''}
+          placeholder="Escribe tu consulta para esta pregunta…"
+          minHeight="min-h-44"
+          showReset={false}
+          statusText="Puedes ejecutar tu consulta para probarla antes de enviar el examen."
+        />
+      </Card>
+    ))}
+
+    <div class="mt-8 flex items-center justify-between gap-4">
+      <p class="text-sm text-muted-foreground">
+        <span data-exam-status></span>
+      </p>
+      <button
+        type="button"
+        data-exam-submit
+        class="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-6 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+      >
+        Enviar examen
+      </button>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-exam]');
+  if (!root) throw new Error('Examen no encontrado');
+
+  const examId = root.dataset.examId!;
+  const submitButton = root.querySelector<HTMLButtonElement>('[data-exam-submit]')!;
+  const status = root.querySelector<HTMLElement>('[data-exam-status]');
+
+  const getAnswers = (): Record<string, string | number> => {
+    const answers: Record<string, string | number> = {};
+
+    root.querySelectorAll<HTMLElement>('[data-mc-question]').forEach((question) => {
+      const questionId = question.dataset.questionId!;
+      const checked = question.querySelector<HTMLInputElement>(
+        `input[name="q-${questionId}"]:checked`,
+      );
+      if (checked) {
+        answers[questionId] = Number(checked.value);
+      }
+    });
+
+    root.querySelectorAll<HTMLElement>('[data-sql-question]').forEach((question) => {
+      const questionId = question.dataset.questionId!;
+      const workbench = window.__sqlPlaygrounds.get(`exam-q-${questionId}`);
+      const sql = workbench?.getValue() ?? '';
+      if (sql.trim()) {
+        answers[questionId] = sql;
+      }
+    });
+
+    return answers;
+  };
+
+  submitButton.addEventListener('click', async () => {
+    const missing = root.querySelectorAll<HTMLElement>('[data-mc-question]').length +
+      root.querySelectorAll<HTMLElement>('[data-sql-question]').length;
+    const answered = Object.keys(getAnswers()).length;
+
+    if (answered < missing) {
+      if (status) status.textContent = `Faltan ${missing - answered} respuestas por responder.`;
+      return;
+    }
+
+    submitButton.disabled = true;
+    if (status) status.textContent = 'Evaluando en el servidor…';
+    try {
+      const response = await fetch(`/api/exams/${examId}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: getAnswers() }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        if (status) status.textContent = payload.error ?? 'Error al enviar el examen.';
+        submitButton.disabled = false;
+        return;
+      }
+      window.location.href = `/exams/result/${payload.attemptId}`;
+    } catch {
+      if (status) status.textContent = 'Error de red al enviar el examen.';
+      submitButton.disabled = false;
+    }
+  });
+</script>

@@ -1,0 +1,87 @@
+---
+title: "INSERT, UPDATE y DELETE"
+slug: "insert-update-delete"
+order: 6
+description: "Agrega, modifica y elimina datos con las sentencias de escritura de SQL."
+difficulty: "intermedio"
+minutes: 15
+---
+
+Hasta ahora solo leíamos datos. Las sentencias **DML** (`INSERT`, `UPDATE`, `DELETE`) permiten escribir en la base.
+
+## INSERT: agregar filas
+
+```sql
+INSERT INTO users (name, email, age, country)
+VALUES ('Santiago Vega', 'santiago@example.com', 27, 'AR');
+```
+
+- Se indican las columnas y, en `VALUES`, los valores en el mismo orden.
+- Si omites columnas, se usan sus valores por defecto (o falla si son obligatorias).
+
+Puedes insertar varias filas a la vez:
+
+```sql
+INSERT INTO products (name, price, stock, category_id)
+VALUES
+  ('Galletas 200g', 20.0, 80, 2),
+  ('Té verde 20 sobres', 45.0, 50, 1);
+```
+
+## UPDATE: modificar filas
+
+```sql
+UPDATE products
+SET stock = 150
+WHERE name = 'Papas fritas 150g';
+```
+
+**¡Ojo!** Si olvidas el `WHERE`, la sentencia actualiza **todas** las filas:
+
+```sql
+-- PELIGRO: sube el precio de TODO el catálogo
+UPDATE products
+SET price = price * 1.1;
+```
+
+Puedes modificar varias columnas separándolas con comas:
+
+```sql
+UPDATE users
+SET age = 29, country = 'MX'
+WHERE email = 'laura@example.com';
+```
+
+## DELETE: eliminar filas
+
+```sql
+DELETE FROM products
+WHERE id = 12;
+```
+
+Igual que con `UPDATE`, un `DELETE` sin `WHERE` borra toda la tabla:
+
+```sql
+-- PELIGRO: vacía la tabla
+DELETE FROM products;
+```
+
+Para borrar la tabla completa (incluida su estructura) usa `DROP TABLE`:
+
+```sql
+DROP TABLE products;
+```
+
+## Patrón de escritura segura
+
+1. Escribe primero el `WHERE` con un `SELECT` que devuelva las filas afectadas.
+2. Convierte el `SELECT` en `UPDATE`/`DELETE` manteniendo el `WHERE` intacto.
+3. Verifica con `SELECT` el resultado del cambio.
+
+## Puntos clave
+
+- `INSERT` agrega filas; `UPDATE` modifica; `DELETE` elimina.
+- `UPDATE` y `DELETE` **sin** `WHERE` afectan a todas las filas.
+- Después de escribir, verifica siempre con un `SELECT`.
+
+La siguiente lección resuelve preguntas complejas en un solo paso: **las subconsultas**.

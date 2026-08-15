@@ -1,6 +1,16 @@
 import { defineMiddleware } from 'astro:middleware';
 import { auth } from './lib/auth';
 
+const protectedPaths = [
+  '/dashboard',
+  '/playground',
+  '/exercises',
+  '/exams',
+  '/profile',
+  '/certificates',
+  '/progress',
+];
+
 export const onRequest = defineMiddleware(
   async (context, next) => {
     const session = await auth.api.getSession({
@@ -10,10 +20,9 @@ export const onRequest = defineMiddleware(
     context.locals.user = session?.user ?? null;
     context.locals.session = session?.session ?? null;
 
-    if (
-      context.url.pathname.startsWith('/dashboard') &&
-      !session
-    ) {
+    const { pathname } = context.url;
+
+    if (protectedPaths.some((prefix) => pathname.startsWith(prefix)) && !session) {
       return context.redirect('/login');
     }
 

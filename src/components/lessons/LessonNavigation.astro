@@ -1,0 +1,40 @@
+---
+interface Props {
+  prev?: { slug: string; title: string };
+  next?: { slug: string; title: string };
+}
+
+const { prev, next } = Astro.props;
+---
+
+<nav class="mt-10 grid gap-4 sm:grid-cols-2" aria-label="Navegación entre lecciones">
+  {prev ? (
+    <a
+      href={`/lessons/${prev.slug}`}
+      class="group flex flex-col gap-1 rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/50 hover:bg-accent/40"
+    >
+      <span class="text-xs font-medium text-muted-foreground">← Anterior</span>
+      <span class="font-medium group-hover:text-primary">{prev.title}</span>
+    </a>
+  ) : (
+    <span class="hidden sm:block" />
+  )}
+
+  {next ? (
+    <a
+      href={`/lessons/${next.slug}`}
+      class="group flex flex-col items-end gap-1 rounded-xl border border-border bg-card p-5 text-right transition-colors hover:border-primary/50 hover:bg-accent/40"
+    >
+      <span class="text-xs font-medium text-muted-foreground">Siguiente →</span>
+      <span class="font-medium group-hover:text-primary">{next.title}</span>
+    </a>
+  ) : (
+    <a
+      href="/exams"
+      class="group flex flex-col items-end gap-1 rounded-xl border border-primary/40 bg-primary/5 p-5 text-right transition-colors hover:bg-primary/10"
+    >
+      <span class="text-xs font-medium text-primary">Última lección →</span>
+      <span class="font-medium">Ir a los exámenes</span>
+    </a>
+  )}
+</nav>

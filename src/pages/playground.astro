@@ -1,0 +1,49 @@
+---
+import Layout from '@/layouts/Layout.astro';
+import SqlWorkbench from '@/components/SqlWorkbench.astro';
+import Card from '@/components/ui/Card.astro';
+import { PLAYGROUND_DEFAULT_SQL, SEED_TABLES } from '@/lib/sql/seed-data';
+---
+
+<Layout title="Playground SQL" noindex>
+  <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold tracking-tight">Playground SQL</h1>
+      <p class="mt-2 max-w-2xl text-muted-foreground">
+        Una base de datos SQLite se ejecuta en tu navegador. Escribe consultas y ejecútalas con
+        el botón o con <kbd class="rounded border border-border px-1.5 py-0.5 text-xs">Ctrl + Enter</kbd>.
+        Todo se reinicia con un clic.
+      </p>
+    </div>
+
+    <SqlWorkbench
+      id="playground-main"
+      initialSql={PLAYGROUND_DEFAULT_SQL}
+      minHeight="min-h-[26rem]"
+      statusText="Base lista. Escribe una consulta y pulsa Ejecutar."
+    />
+
+    <div class="mt-8 grid gap-4 sm:grid-cols-2">
+      <Card>
+        <h2 class="mb-3 text-sm font-semibold">Tablas disponibles</h2>
+        <ul class="space-y-2">
+          {SEED_TABLES.map((table) => (
+            <li class="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 px-3 py-2">
+              <code class="text-sm font-medium">{table.name}</code>
+              <span class="text-xs text-muted-foreground">{table.description}</span>
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <Card>
+        <h2 class="mb-3 text-sm font-semibold">Ideas para practicar</h2>
+        <ul class="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+          <li>Lista los usuarios de México con <code>WHERE country = 'MX'</code>.</li>
+          <li>Calcula el total de pedidos con <code>SELECT SUM(total) FROM orders;</code></li>
+          <li>Une tablas con <code>JOIN</code> y agrupa con <code>GROUP BY</code>.</li>
+          <li>Modifica datos con <code>INSERT</code>, <code>UPDATE</code> o <code>DELETE</code> y reinicia la base.</li>
+        </ul>
+      </Card>
+    </div>
+  </div>
+</Layout>

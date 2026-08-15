@@ -1,0 +1,86 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '@/layouts/Layout.astro';
+import Badge from '@/components/ui/Badge.astro';
+import ProgressBar from '@/components/ui/ProgressBar.astro';
+import { getProgress } from '@/lib/services/progress';
+
+const lessons = (await getCollection('lessons')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+const difficultyLabel = {
+  basico: 'Básico',
+  intermedio: 'Intermedio',
+  avanzado: 'Avanzado',
+} as const;
+
+const difficultyVariant = {
+  basico: 'default',
+  intermedio: 'warning',
+  avanzado: 'destructive',
+} as const;
+
+const { user } = Astro.locals;
+const progress = user ? await getProgress(user.id) : null;
+const completedSet = new Set(progress?.completedSlugs ?? []);
+---
+
+<Layout title="Lecciones" description="Todas las lecciones del curso de SQL, de principiante a avanzado.">
+  <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+    <div class="mb-10">
+      <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Curso de SQL</h1>
+      <p class="mt-2 max-w-2xl text-muted-foreground">
+        {lessons.length} lecciones interactivas, de los fundamentos hasta funciones de ventana.
+        Cada lección incluye explicaciones, ejemplos ejecutables y ejercicios.
+      </p>
+
+      {progress && (
+        <div class="mt-6 rounded-xl border border-border bg-card p-5">
+          <div class="mb-2 flex items-center justify-between text-sm">
+            <span class="font-medium">Tu progreso</span>
+            <span class="tabular-nums text-muted-foreground">
+              {progress.completed} / {progress.total} · {progress.percent}%
+            </span>
+          </div>
+          <ProgressBar value={progress.completed} max={progress.total} label="Progreso del curso" />
+        </div>
+      )}
+    </div>
+
+    <ol class="space-y-3">
+      {lessons.map((lesson) => {
+        const isCompleted = completedSet.has(lesson.data.slug);
+        return (
+          <li>
+            <a
+              href={`/lessons/${lesson.data.slug}`}
+              class="group flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/50 hover:bg-accent/40"
+            >
+              <span
+                class:list={[
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold',
+                  isCompleted
+                    ? 'bg-success/15 text-success'
+                    : 'bg-primary/10 text-primary',
+                ]}
+              >
+                {isCompleted ? '✓' : lesson.data.order}
+              </span>
+              <div class="min-w-0 flex-1">
+                <h2 class="truncate font-semibold group-hover:text-primary">{lesson.data.title}</h2>
+                <p class="mt-0.5 line-clamp-1 text-sm text-muted-foreground">{lesson.data.description}</p>
+              </div>
+              <div class="hidden shrink-0 flex-col items-end gap-1 sm:flex">
+                <Badge variant={difficultyVariant[lesson.data.difficulty]}>
+                  {difficultyLabel[lesson.data.difficulty]}
+                </Badge>
+                <span class="text-xs text-muted-foreground">~{lesson.data.minutes} min</span>
+              </div>
+            </a>
+          </li>
+        );
+      })}
+    </ol>
+  </div>
+</Layout>

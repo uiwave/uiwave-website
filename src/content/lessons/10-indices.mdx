@@ -1,0 +1,80 @@
+---
+title: "Índices y rendimiento"
+slug: "indices"
+order: 10
+description: "Acelera las consultas con índices y entiende cuándo conviene crearlos."
+difficulty: "intermedio"
+minutes: 12
+---
+
+Un índice es una estructura auxiliar que permite **encontrar filas sin recorrer toda la tabla**. Sin índice, una búsqueda revisa fila por fila (un *full scan*); con índice, salta directo a los datos.
+
+## Crear un índice
+
+```sql
+CREATE INDEX idx_users_country
+ON users (country);
+```
+
+Después de esto, las consultas que filtran por `country` pueden usar el índice:
+
+```sql
+SELECT *
+FROM users
+WHERE country = 'MX';
+```
+
+## Índices compuestos
+
+Para filtros sobre varias columnas, un índice compuesto suele ser mejor que dos simples:
+
+```sql
+CREATE INDEX idx_orders_user_date
+ON orders (user_id, order_date);
+```
+
+## Índices únicos
+
+Un índice `UNIQUE` además garantiza que no existan valores duplicados:
+
+```sql
+CREATE UNIQUE INDEX idx_users_email
+ON users (email);
+```
+
+## Cuándo NO usar índices
+
+- En tablas pequeñas: recorrerlas es tan rápido como usar el índice.
+- En columnas con pocos valores distintos (p. ej. una columna `país` con 2 valores): el índice no reduce mucho el trabajo.
+- Si las consultas casi nunca filtran por esa columna: el índice solo ocupa espacio.
+
+## Cómo comprobar el plan de ejecución
+
+SQLite permite ver cómo ejecutará una consulta:
+
+```sql
+EXPLAIN QUERY PLAN
+SELECT *
+FROM users
+WHERE country = 'MX';
+```
+
+## La clave primaria ya es un índice
+
+`PRIMARY KEY` y las columnas `UNIQUE` crean índices automáticamente:
+
+```sql
+-- El id es PRIMARY KEY: la búsqueda ya es rápida
+SELECT *
+FROM users
+WHERE id = 5;
+```
+
+## Puntos clave
+
+- Los índices aceleran `WHERE`, `JOIN`, `ORDER BY` y `GROUP BY`.
+- Se crean con `CREATE INDEX` sobre la(s) columna(s) adecuada(s).
+- Escribir mucho y leer poco, o tablas pequeñas, son señales de que no necesitas índices.
+- `PRIMARY KEY` y `UNIQUE` ya crean índices por ti.
+
+La siguiente lección trata sobre **transacciones**, la garantía de que los cambios no se queden a medias.

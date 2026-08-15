@@ -8,6 +8,21 @@ export const auth = betterAuth({
     provider: 'pg',
   }),
 
+  user: {
+    additionalFields: {
+      username: {
+        type: 'string',
+        required: false,
+        defaultValue: '',
+      },
+      isPublicProfile: {
+        type: 'boolean',
+        required: false,
+        defaultValue: true,
+      },
+    },
+  },
+
   socialProviders: {
     github: {
       clientId: import.meta.env.GITHUB_CLIENT_ID,

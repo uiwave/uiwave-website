@@ -1,35 +1,61 @@
 ---
-const title = 'Iniciar sesión';
+import Layout from '@/layouts/Layout.astro';
+import Logo from '@/components/Logo.astro';
+import { SITE_NAME } from '@/lib/site';
+
+const { user } = Astro.locals;
+
+if (user) {
+  return Astro.redirect('/dashboard');
+}
 ---
 
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>{title}</title>
-  </head>
+<Layout title="Iniciar sesión" noindex>
+  <div class="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-4 py-16">
+    <div class="mb-8">
+      <Logo />
+    </div>
+    <div class="w-full rounded-2xl border border-border bg-card p-8 shadow-sm">
+      <h1 class="text-center text-2xl font-bold tracking-tight">Bienvenido a {SITE_NAME}</h1>
+      <p class="mt-2 text-center text-sm text-muted-foreground">
+        Inicia sesión para guardar tu progreso, resolver ejercicios y obtener tu certificado.
+      </p>
 
-  <body>
-    <main>
-      <h1>Iniciar sesión</h1>
-
-      <button id="github-login">
+      <button
+        id="github-login"
+        class="mt-8 flex w-full items-center justify-center gap-3 rounded-lg bg-foreground px-4 py-3 font-medium text-background transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-60"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5" aria-hidden="true">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z" />
+        </svg>
         Continuar con GitHub
       </button>
-    </main>
 
-    <script>
-      import { authClient } from '../lib/auth-client';
+      <p class="mt-4 text-center text-xs text-muted-foreground">
+        Al continuar aceptas usar tus datos públicos de GitHub para tu perfil.
+      </p>
+    </div>
 
-      const button = document.querySelector('#github-login');
+    <p class="mt-6 text-center text-sm text-muted-foreground">
+      ¿Ya tienes cuenta? <a href="/dashboard" class="font-medium text-primary hover:underline">Ir a mi dashboard</a>
+    </p>
+  </div>
+</Layout>
 
-      button?.addEventListener('click', async () => {
-        await authClient.signIn.social({
-          provider: 'github',
-          callbackURL: '/dashboard',
-        });
+<script>
+  import { authClient } from '../lib/auth-client';
+
+  const button = document.querySelector<HTMLButtonElement>('#github-login');
+
+  button?.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      await authClient.signIn.social({
+        provider: 'github',
+        callbackURL: '/dashboard',
       });
-    </script>
-  </body>
-</html>
+    } catch {
+      button.disabled = false;
+    }
+  });
+</script>
